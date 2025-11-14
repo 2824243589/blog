@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 检出仓库代码
+      # 1️⃣ 检出代码
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      # 5️⃣ 构建项目并注入 OAuth 环境变量
+      # 5️⃣ 构建项目
       - name: Build project
         run: pnpm run build
         env:
@@ -45,19 +45,22 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 7️⃣ 同步 dist/ 并重启 PM2
-      - name: Deploy to server
+      # 7️⃣ 同步 dist/ 到服务器
+      - name: Sync build to server
+        run: |
+          rsync -avz --delete ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
+
+      # 8️⃣ 重载 PM2 服务
+      - name: Reload PM2 service
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            # 进入服务器目录
-            cd /var/www/blog/dist
+            # 确认 pm2 命令路径
+            if ! command -v pm2 &> /dev/null
+            then
+              echo "pm2 not found"
+              exit 1
+            fi
 
-            # 安装依赖（可选）
-            pnpm install
-
-            # 同步构建产物（dist 下内容直接覆盖 /var/www/blog/dist）
-            rsync -avz --delete ./dist/ /var/www/blog/dist/
-
-            # PM2 重载服务
-            pm2 reload blog || /root/.npm-global/bin/pm2 start npm --name "blog" -- run start --cwd /var/www/blog/dist
+            # 重载服务，如果服务不存在则启动
+            pm2 reload blog --update-env || pm2 start pnpm --name "blog" -- run start --cwd /var/www/blog/dist
           EOF
