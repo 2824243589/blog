@@ -34,12 +34,6 @@ jobs:
         env:
           OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
-          PUBLIC_DECAP_CMS_SRC_URL: ${{ secrets.PUBLIC_DECAP_CMS_SRC_URL }}
-          PUBLIC_DECAP_CMS_VERSION: ${{ secrets.PUBLIC_DECAP_CMS_VERSION }}
-          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
-          UMAMI_TRACKING_CODE: ${{ secrets.UMAMI_TRACKING_CODE }}
-          # 如果还有其他必需变量，也在这里加
-          # EXAMPLE_API_KEY: ${{ secrets.EXAMPLE_API_KEY }}
 
       # 6️⃣ 设置 SSH
       - name: Setup SSH
@@ -47,19 +41,19 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 7️⃣ 同步到服务器并重启 PM2
+      # 7️⃣ 同步 dist/ 并重启 PM2
       - name: Deploy to server
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            cd ${{ secrets.SERVER_PATH }}
+            # 进入服务器目录
+            cd /var/www/blog/dist
 
-            # 安装依赖（如果需要）
+            # 安装依赖（可选）
             pnpm install
 
-            # 同步构建产物到服务器目录
-            rsync -avz --delete ./ ${{ secrets.SERVER_PATH }}/
+            # 同步构建产物（dist 下内容直接覆盖 /var/www/blog/dist）
+            rsync -avz --delete ./dist/ /var/www/blog/dist/
 
-            # 使用 PM2 重启服务（平滑重载）
-            pm2 reload blog || /root/.npm-global/bin/pm2 start npm --name "blog" -- run start
-
+            # PM2 重载服务
+            pm2 reload blog || /root/.npm-global/bin/pm2 start npm --name "blog" -- run start --cwd /var/www/blog/dist
           EOF
