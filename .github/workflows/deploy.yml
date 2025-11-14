@@ -42,5 +42,6 @@ jobs:
       - name: Deploy dist to server
         run: |
           rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
             dist/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
