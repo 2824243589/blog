@@ -1,9 +1,9 @@
-name: Build & Deploy SSR Site
+name: Build & Deploy Astro SSR Site
 
 on:
   push:
     branches:
-      - main  # 监听 main 分支
+      - main
 
 jobs:
   build-and-deploy:
@@ -28,9 +28,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      # 5️⃣ 构建项目
+      # 5️⃣ 构建项目并注入 OAuth 环境变量
       - name: Build project
         run: pnpm run build
+        env:
+          OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
+          OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+          # 如果还有其他必需变量，也在这里加
+          # EXAMPLE_API_KEY: ${{ secrets.EXAMPLE_API_KEY }}
 
       # 6️⃣ 设置 SSH
       - name: Setup SSH
@@ -43,11 +48,11 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd ${{ secrets.SERVER_PATH }}
-            
+
             # 安装依赖（如果需要）
             pnpm install
 
-            # 同步最新构建文件到项目目录
+            # 同步构建产物到服务器目录
             rsync -avz --delete ./ ${{ secrets.SERVER_PATH }}/
 
             # 使用 PM2 重启服务（平滑重载）
