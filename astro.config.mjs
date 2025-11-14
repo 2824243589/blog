@@ -28,6 +28,7 @@ import { parseDirectiveNode } from "./src/plugins/remark-directive-rehype.js";
 import { remarkExcerpt } from "./src/plugins/remark-excerpt.js";
 import { remarkMermaid } from "./src/plugins/remark-mermaid.js";
 import { remarkReadingTime } from "./src/plugins/remark-reading-time.mjs";
+import node from "@astrojs/node";
 
 
 // https://astro.build/config
@@ -37,6 +38,9 @@ const adapter = process.env.CF_PAGES ? cloudflarePages() : vercel({ mode: "serve
 export default defineConfig({
 	site: siteConfig.siteURL,
 output: 'server',
+adapter: node({
+    mode: "standalone"
+  })
 	base: "/",
 	trailingSlash: "always",
 	adapter: adapter,
