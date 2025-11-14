@@ -1,52 +1,32 @@
-name: Build & Deploy Static Site
+name: Build & Deploy SSR Site
 
 on:
   push:
     branches:
-      - main  # 监听 main 分支
+      - main
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 检出仓库代码
+      # 1️⃣ 检出代码
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ 设置 Node.js 环境
+      # 2️⃣ 设置 Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18' # 可根据项目 Node 版本调整
+          node-version: '18'
 
       # 3️⃣ 安装依赖
       - name: Install dependencies
         run: npm install
 
-      # 4️⃣ 构建项目
+      # 4️⃣ 构建 SSR 项目
       - name: Build project
-        run: |
-          # 检测框架类型并运行对应 build 命令
-          if [ -f package.json ]; then
-            if grep -q "react-scripts" package.json; then
-              echo "Detected React project"
-              npm run build
-            elif grep -q "@vue/cli-service" package.json; then
-              echo "Detected Vue project"
-              npm run build
-            elif grep -q "next" package.json; then
-              echo "Detected Next.js project"
-              npm run build
-              npm run export || true  # 如果是 Next.js 静态导出
-            elif grep -q "astro" package.json; then
-              echo "Detected Astro project"
-              npm run build
-            else
-              echo "Unknown project type, default to npm run build"
-              npm run build
-            fi
-          fi
+        run: npm run build
 
       # 5️⃣ 设置 SSH
       - name: Setup SSH
@@ -54,23 +34,18 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 6️⃣ 部署到服务器
+      # 6️⃣ 同步到服务器并重启 PM2
       - name: Deploy to server
         run: |
-          # 确保服务器目录存在
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ${{ secrets.SERVER_PATH }}"
-          
-          # 自动检测构建目录
-          if [ -d build ]; then
-            BUILD_DIR=build
-          elif [ -d dist ]; then
-            BUILD_DIR=dist
-          elif [ -d out ]; then
-            BUILD_DIR=out
-          else
-            echo "Build directory not found!"
-            exit 1
-          fi
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd ${{ secrets.SERVER_PATH }}
+            
+            # 如果需要，可以安装依赖
+            npm install
+            
+            # 同步最新构建文件到项目目录（可根据需要）
+            rsync -avz --delete ./ ${{ secrets.SERVER_PATH }}/
 
-          echo "Deploying from $BUILD_DIR to server..."
-          rsync -avz --delete ./$BUILD_DIR/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}
+            # 使用 PM2 重启服务
+            pm2 reload your-app-name || pm2 start npm --name "your-app-name" -- run start
+          EOF
