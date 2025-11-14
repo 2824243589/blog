@@ -34,6 +34,10 @@ jobs:
         env:
           OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
+          PUBLIC_DECAP_CMS_SRC_URL: ${{ secrets.PUBLIC_DECAP_CMS_SRC_URL }}
+          PUBLIC_DECAP_CMS_VERSION: ${{ secrets.PUBLIC_DECAP_CMS_VERSION }}
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_TRACKING_CODE: ${{ secrets.UMAMI_TRACKING_CODE }}
           # 如果还有其他必需变量，也在这里加
           # EXAMPLE_API_KEY: ${{ secrets.EXAMPLE_API_KEY }}
 
