@@ -1,4 +1,4 @@
----
+.mach---
 import BackToTop from "@components/control/BackToTop.astro";
 import Footer from "@components/Footer.astro";
 import Navbar from "@components/Navbar.astro";
@@ -108,7 +108,8 @@ const hasBannerCredit =
 const hasBannerLink = !!siteConfig.wallpaper.banner?.credit?.url;
 
 // 检查是否为首页
-const isHomePage = Astro.url.pathname === "/" || Astro.url.pathname === "";
+const safePath = Astro.url?.pathname ?? "/404";
+const isHomePage = safePath === "/" || safePath === "";
 const showHomeText = siteConfig.wallpaper.banner?.homeText?.enable && isHomePage;
 // 手机端非首页不显示banner的CSS类
 const mobileNonHomeBannerClass = !isHomePage ? "mobile-hide-banner" : "";
