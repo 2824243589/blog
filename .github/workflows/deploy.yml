@@ -3,49 +3,53 @@ name: Build & Deploy SSR Site
 on:
   push:
     branches:
-      - main
+      - main  # 监听 main 分支
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 检出代码
+      # 1️⃣ 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ 设置 Node.js
+      # 2️⃣ 安装 Node.js 20
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
 
-      # 3️⃣ 安装依赖
+      # 3️⃣ 安装 pnpm
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      # 4️⃣ 安装依赖
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
-      # 4️⃣ 构建 SSR 项目
+      # 5️⃣ 构建项目
       - name: Build project
-        run: npm run build
+        run: pnpm run build
 
-      # 5️⃣ 设置 SSH
+      # 6️⃣ 设置 SSH
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 6️⃣ 同步到服务器并重启 PM2
+      # 7️⃣ 同步到服务器并重启 PM2
       - name: Deploy to server
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
             cd ${{ secrets.SERVER_PATH }}
             
-            # 如果需要，可以安装依赖
-            npm install
-            
-            # 同步最新构建文件到项目目录（可根据需要）
+            # 安装依赖（如果需要）
+            pnpm install
+
+            # 同步最新构建文件到项目目录
             rsync -avz --delete ./ ${{ secrets.SERVER_PATH }}/
 
-            # 使用 PM2 重启服务
+            # 使用 PM2 重启服务（平滑重载）
             pm2 reload your-app-name || pm2 start npm --name "your-app-name" -- run start
           EOF
