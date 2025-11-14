@@ -64,5 +64,5 @@ jobs:
             fi
 
             # 重载服务，如果服务不存在则启动
-            pm2 reload blog --update-env || pm2 start pnpm --name "blog" -- run start --cwd /var/www/blog/dist
+            pm2 reload blog --update-env || /root/.npm-global/bin/pm2 start pnpm --name "blog" -- run start --cwd /var/www/blog/dist
           EOF
