@@ -1,4 +1,4 @@
-name: Deploy Astro SSR
+name: Build & Deploy Astro SSR
 
 on:
   push:
@@ -6,24 +6,29 @@ on:
       - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      # 1. 拉取代码
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      # 2. Node 环境
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
+      # 3. 安装 pnpm
       - name: Install pnpm
         run: npm install -g pnpm
 
+      # 4. 安装依赖
       - name: Install dependencies
         run: pnpm install
 
+      # 5. 构建
       - name: Build
         run: pnpm run build
         env:
@@ -34,14 +39,29 @@ jobs:
           UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
           UMAMI_TRACKING_CODE: ${{ secrets.UMAMI_TRACKING_CODE }}
 
-      - name: Setup SSH
+      # 6. SSH
+      - name: SSH Setup
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      - name: Deploy dist to server
+      # 7. 部署
+      - name: Deploy to server
         run: |
+          # Sync dist to server
           rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no" \
-            dist/ \
+            ./dist/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
+
+          # Restart PM2 on server
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            # 杀掉旧的 blog（避免重复）
+            pm2 delete blog || true
+
+            # 进入 server 目录
+            cd /var/www/blog/dist/server
+
+            # 启动 SSR 服务
+            pm2 start server.mjs --name blog
+            pm2 save
+          EOF
