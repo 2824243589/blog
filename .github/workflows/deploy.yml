@@ -1,4 +1,4 @@
-name: Build & Deploy Astro SSR Site
+name: Deploy Astro SSR
 
 on:
   push:
@@ -6,63 +6,37 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 检出仓库代码
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v3
 
-      # 2️⃣ 安装 Node.js 20
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: 20
 
-      # 3️⃣ 安装 pnpm
       - name: Install pnpm
         run: npm install -g pnpm
 
-      # 4️⃣ 安装依赖
       - name: Install dependencies
         run: pnpm install
 
-      # 5️⃣ 构建项目
-      - name: Build project
+      - name: Build
         run: pnpm run build
         env:
           OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
-          PUBLIC_DECAP_CMS_SRC_URL: ${{ secrets.PUBLIC_DECAP_CMS_SRC_URL }}
-          PUBLIC_DECAP_CMS_VERSION: ${{ secrets.PUBLIC_DECAP_CMS_VERSION }}
-          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
-          UMAMI_TRACKING_CODE: ${{ secrets.UMAMI_TRACKING_CODE }}
 
-      # 6️⃣ 设置 SSH
       - name: Setup SSH
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 7️⃣ 同步 dist/ 到服务器（自动接受 host key）
-      - name: Sync build to server
+      - name: Deploy dist to server
         run: |
           rsync -avz --delete \
-            -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
-            ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
-
-      # 8️⃣ 重载 PM2 服务
-      - name: Reload PM2 service
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            # 检查 pm2 是否存在
-            if ! command -v pm2 &> /dev/null
-            then
-              echo "pm2 not found"
-              exit 1
-            fi
-
-            # 重载服务，如果服务不存在则启动
-            pm2 reload blog --update-env || /root/.npm-global/bin/pm2 start pnpm --name "blog" -- run start --cwd /var/www/blog/dist
-          EOF
+            dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
