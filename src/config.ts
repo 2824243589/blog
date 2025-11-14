@@ -17,15 +17,15 @@ import { getTranslateLanguageFromConfig, detectBrowserLanguage } from "./utils/l
 
 
 // 自动检测浏览器语言（服务端渲染时默认为 'en'）
-const SITE_LANG = detectBrowserLanguage("en");
+//const SITE_LANG = detectBrowserLanguage("en");
 // 如果需要强制使用特定语言，可以取消注释下面一行并设置语言代码
-// const SITE_LANG = "zh"; // 强制使用的语言代码，'zh', 'en', 'ja' 等
+const SITE_LANG = "zh"; // 强制使用的语言代码，'zh', 'en', 'ja' 等
 
 
 export const siteConfig: SiteConfig = {
-	siteURL: "https://twilight.spr-aachen.com/", // 请替换为你的站点 URL 并以斜杠结尾
-	title: "Twilight",
-	subtitle: "Blog Template",
+	siteURL: "http://129.204.10.7/", // 请替换为你的站点 URL 并以斜杠结尾
+	title: "shadowbh",
+	subtitle: "Blog",
 
 	lang: SITE_LANG, // 自动检测的浏览器语言
 	translate: {
@@ -169,13 +169,13 @@ export const navBarConfig: NavBarConfig = {
 			children: [
 				{
 					name: "GitHub",
-					url: "https://github.com/Example",
+					url: "https://github.com/2824243589/blog/tree/main",
 					external: true,
 					icon: "fa6-brands:github",
 				},
 				{
 					name: "Bilibili",
-					url: "https://space.bilibili.com/Example",
+					url: "https://space.bilibili.com",
 					external: true,
 					icon: "fa6-brands:bilibili",
 				},
@@ -242,7 +242,7 @@ export const profileConfig: ProfileConfig = {
 
 
 export const licenseConfig: LicenseConfig = {
-	enable: true,
+	enable: false,
 	name: "CC BY-NC-SA 4.0",
 	url: "https://creativecommons.org/licenses/by-nc-sa/4.0/",
 };
@@ -255,10 +255,10 @@ export const expressiveCodeConfig: ExpressiveCodeConfig = {
 
 
 export const commentConfig: CommentConfig = {
-	enable: false, // 启用评论功能。当设置为 false 时，评论组件将不会显示在文章区域。
+	enable: true, // 启用评论功能。当设置为 false 时，评论组件将不会显示在文章区域。
 	twikoo: {
-		envId: "https://twikoo.vercel.app",
-		lang: "en", // 设置 Twikoo 评论系统语言为英文
+		envId: "https://twikooabc.netlify.app/.netlify/functions/twikoo",
+		lang: "zh", // 设置 Twikoo 评论系统语言为英文
 	},
 };
 
@@ -451,7 +451,7 @@ export const particleConfig: ParticleConfig = {
 
 // 看板娘配置
 export const pioConfig: import("./types/config").PioConfig = {
-	enable: false, // 启用看板娘
+	enable: true, // 启用看板娘
 	models: ["/pio/models/pio/model.json"], // 默认模型路径
 	position: "left", // 默认位置在右侧
 	width: 280, // 默认宽度

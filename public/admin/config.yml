@@ -1,9 +1,9 @@
 backend:
   name: github
   branch: main
-  repo: Spr-Aachen/Twilight # 请替换为您的 GitHub 仓库
-  site_domain: twilight.spr-aachen.com # 请替换为您的域名
-  base_url: https://twilight.spr-aachen.com  # 请替换为您的 URL
+  repo: 2824243589/blog # 请替换为您的 GitHub 仓库
+  site_domain: shadowbh.site # 请替换为您的域名
+  base_url: http://129.204.10.7/  # 请替换为您的 URL
   auth_endpoint: oauth # OAuth 路由由集成提供
 
 # 媒体文件配置
