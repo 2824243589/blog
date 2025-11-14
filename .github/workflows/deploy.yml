@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      # 5. 构建
+      # 5. 构建 SSR 项目
       - name: Build
         run: pnpm run build
         env:
@@ -45,23 +45,23 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 7. 部署
+      # 7. 部署到服务器
       - name: Deploy to server
         run: |
-          # Sync dist to server
+          # 同步 dist 到服务器
           rsync -avz --delete \
             ./dist/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
 
-          # Restart PM2 on server
+          # SSH 到服务器操作 PM2
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            # 杀掉旧的 blog（避免重复）
+            # 杀掉旧的 blog 进程（避免重复）
             pm2 delete blog || true
 
-            # 进入 server 目录
             cd /var/www/blog/dist/server
 
-            # 启动 SSR 服务
-            pm2 start server.mjs --name blog
+            # 启动 Astro SSR (入口文件 entry.mjs)
+            pm2 start entry.mjs --name blog
+
             pm2 save
           EOF
