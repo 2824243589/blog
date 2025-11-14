@@ -46,10 +46,10 @@ jobs:
 
       - name: Deploy to server
         run: |
-          # 同步文件
-          rsync -avz --delete \
-            ./dist/ \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+          sudo rsync -avz --delete /home/${USER}/repo/dist/ /var/www/blog/dist/
+          EOF
+
 
           # 重启 PM2 SSR 服务
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
