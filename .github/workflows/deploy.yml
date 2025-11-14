@@ -60,5 +60,6 @@ jobs:
             rsync -avz --delete ./ ${{ secrets.SERVER_PATH }}/
 
             # 使用 PM2 重启服务（平滑重载）
-            pm2 reload your-app-name || pm2 start npm --name "your-app-name" -- run start
+            pm2 reload blog || /root/.npm-global/bin/pm2 start npm --name "blog" -- run start
+
           EOF
