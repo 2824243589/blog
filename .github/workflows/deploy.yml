@@ -1,4 +1,4 @@
-name: Build & Deploy Astro Static Site
+name: Build & Deploy Astro SSR Site
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ 检出代码
+      # 1️⃣ 检出仓库代码
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -45,9 +45,24 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 7️⃣ 同步 dist/ 到服务器
+      # 7️⃣ 同步 dist/ 到服务器（自动接受 host key）
       - name: Sync build to server
         run: |
           rsync -avz --delete \
             -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
+
+      # 8️⃣ 重载 PM2 服务
+      - name: Reload PM2 service
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            # 检查 pm2 是否存在
+            if ! command -v pm2 &> /dev/null
+            then
+              echo "pm2 not found"
+              exit 1
+            fi
+
+            # 重载服务，如果服务不存在则启动
+            pm2 reload blog --update-env || /root/.npm-global/bin/pm2 start pnpm --name "blog" -- run start --cwd /var/www/blog/dist
+          EOF
