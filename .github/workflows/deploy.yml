@@ -48,7 +48,7 @@ jobs:
       # 7️⃣ 同步 dist/ 到服务器（自动接受 host key）
       - name: Sync build to server
         run: |
-          rsync -avz --delete \
+          sudo rsync -avz --delete \
             -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \
             ./dist/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
 
