@@ -3,7 +3,7 @@ name: Build & Deploy Static Site
 on:
   push:
     branches:
-      - main  # 当 push 到 main 分支时触发
+      - main  # 监听 main 分支
 
 jobs:
   build-and-deploy:
@@ -18,7 +18,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'  # 根据你的项目 Node 版本设置
+          node-version: '18' # 可根据项目 Node 版本调整
 
       # 3️⃣ 安装依赖
       - name: Install dependencies
@@ -26,7 +26,27 @@ jobs:
 
       # 4️⃣ 构建项目
       - name: Build project
-        run: npm run build
+        run: |
+          # 检测框架类型并运行对应 build 命令
+          if [ -f package.json ]; then
+            if grep -q "react-scripts" package.json; then
+              echo "Detected React project"
+              npm run build
+            elif grep -q "@vue/cli-service" package.json; then
+              echo "Detected Vue project"
+              npm run build
+            elif grep -q "next" package.json; then
+              echo "Detected Next.js project"
+              npm run build
+              npm run export || true  # 如果是 Next.js 静态导出
+            elif grep -q "astro" package.json; then
+              echo "Detected Astro project"
+              npm run build
+            else
+              echo "Unknown project type, default to npm run build"
+              npm run build
+            fi
+          fi
 
       # 5️⃣ 设置 SSH
       - name: Setup SSH
@@ -40,5 +60,17 @@ jobs:
           # 确保服务器目录存在
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ${{ secrets.SERVER_PATH }}"
           
-          # 同步生成的静态文件（通常 build/ 或 dist/ 文件夹）
-          rsync -avz --delete ./build/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}
+          # 自动检测构建目录
+          if [ -d build ]; then
+            BUILD_DIR=build
+          elif [ -d dist ]; then
+            BUILD_DIR=dist
+          elif [ -d out ]; then
+            BUILD_DIR=out
+          else
+            echo "Build directory not found!"
+            exit 1
+          fi
+
+          echo "Deploying from $BUILD_DIR to server..."
+          rsync -avz --delete ./$BUILD_DIR/ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}
