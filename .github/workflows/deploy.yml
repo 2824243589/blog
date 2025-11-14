@@ -46,15 +46,23 @@ jobs:
 
       - name: Deploy to server
         run: |
+          # 1. 上传到服务器临时目录(/tmp) —— 普通用户就能写入
+          rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no" \
+            ./dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/tmp/blog-dist-sync/
+      
+          # 2. 用 sudo 从 /tmp 覆盖到 /var/www/blog/dist —— 解决 root 覆盖问题
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-          sudo rsync -avz --delete /home/${USER}/repo/dist/ /var/www/blog/dist/
-          EOF
-
-
-          # 重启 PM2 SSR 服务
-          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            sudo rsync -avz --delete /tmp/blog-dist-sync/ /var/www/blog/dist/
+            sudo rm -rf /tmp/blog-dist-sync
+            cd /var/www/blog
+      
+            # 如果你使用 SSR 需要依赖
+            sudo pnpm install --prod
+      
             /root/.npm-global/bin/pm2 delete blog || true
             cd /var/www/blog/dist/server
-            /root/.npm-global/bin/pm2 start entry.mjs --name blog
+            /root/.npm-global/bin/pm2 start entry.mjs --name blog --update-env
             /root/.npm-global/bin/pm2 save
           EOF
