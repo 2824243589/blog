@@ -1,28 +1,32 @@
-name: Deploy Blog
+name: Build & Deploy Astro SSR
 
 on:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Setup Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 20
+      - name: Setup Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
-    - name: Install dependencies
-      run: npm install
+      - name: Install pnpm
+        run: npm install -g pnpm
 
-    - name: Build project
-      run: npm run build
-      env:
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build
+        run: pnpm run build
+        env:
           OAUTH_GITHUB_CLIENT_ID: ${{ secrets.OAUTH_GITHUB_CLIENT_ID }}
           OAUTH_GITHUB_CLIENT_SECRET: ${{ secrets.OAUTH_GITHUB_CLIENT_SECRET }}
           PUBLIC_DECAP_CMS_SRC_URL: ${{ secrets.PUBLIC_DECAP_CMS_SRC_URL }}
@@ -30,25 +34,27 @@ jobs:
           UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
           UMAMI_TRACKING_CODE: ${{ secrets.UMAMI_TRACKING_CODE }}
 
-    # 将 SSH 密钥写入文件
-    - name: Setup SSH Key
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+      - name: SSH Setup
+        uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-    # 同步 dist 到服务器
-    - name: Upload dist to server
-      run: |
-        rsync -avz --delete \
-          ./dist/ \
-          root@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
+      # ⭐ 关键修复：添加 known_hosts
+      - name: Add server to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-    # 使用绝对路径执行 pm2，避免找不到命令
-    - name: Restart PM2
-      run: |
-        ssh root@${{ secrets.SERVER_HOST }} "\
-          /root/.npm-global/bin/pm2 delete blog || true; \
-          /root/.npm-global/bin/pm2 start /var/www/blog/entry.mjs --name blog \
-        "
+      - name: Deploy to server
+        run: |
+          # 同步文件
+          rsync -avz --delete \
+            ./dist/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
+
+          # 重启 PM2 SSR 服务
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            /root/.npm-global/bin/pm2 delete blog || true
+            cd /var/www/blog/dist/server
+            /root/.npm-global/bin/pm2 start entry.mjs --name blog
+            /root/.npm-global/bin/pm2 save
+          EOF
