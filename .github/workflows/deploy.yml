@@ -10,25 +10,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 拉取代码
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Node 环境
       - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # 3. 安装 pnpm
       - name: Install pnpm
         run: npm install -g pnpm
 
-      # 4. 安装依赖
       - name: Install dependencies
         run: pnpm install
 
-      # 5. 构建 SSR 项目
       - name: Build
         run: pnpm run build
         env:
@@ -39,29 +34,27 @@ jobs:
           UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
           UMAMI_TRACKING_CODE: ${{ secrets.UMAMI_TRACKING_CODE }}
 
-      # 6. SSH
       - name: SSH Setup
         uses: webfactory/ssh-agent@v0.9.1
         with:
           ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-      # 7. 部署到服务器
+      # ⭐ 关键修复：添加 known_hosts
+      - name: Add server to known_hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy to server
         run: |
-          # 同步 dist 到服务器
+          # 同步文件
           rsync -avz --delete \
             ./dist/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/blog/dist/
 
-          # SSH 到服务器操作 PM2
+          # 重启 PM2 SSR 服务
           ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
-            # 杀掉旧的 blog 进程（避免重复）
             pm2 delete blog || true
-
             cd /var/www/blog/dist/server
-
-            # 启动 Astro SSR (入口文件 entry.mjs)
             pm2 start entry.mjs --name blog
-
             pm2 save
           EOF
