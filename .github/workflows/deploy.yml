@@ -1,0 +1,31 @@
+name: Deploy Static Site
+
+# 当 main 分支 push 时触发
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ 检出仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # 2️⃣ 设置 SSH
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
+
+      # 3️⃣ 部署到服务器
+      - name: Deploy to server
+        run: |
+          # 确保目标文件夹存在
+          ssh -o StrictHostKeyChecking=no ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} "mkdir -p ${{ secrets.SERVER_PATH }}"
+          
+          # 同步仓库内容到服务器，删除旧文件
+          rsync -avz --delete ./ ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.SERVER_PATH }}
