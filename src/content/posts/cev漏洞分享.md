@@ -56,6 +56,8 @@ return res' 0
 * ### 具体复现
 
    为了节省篇幅，具体复现一笔带过，如果需要查阅请前往<https://github.com/vulhub/vulhub/blob/master/redis/CVE-2022-0543/README.zh-cn.md>进行详细的了解。
+
+  ![](/images/70b9079a-6fc5-4789-abb0-7d5bd90ca9a6.png)
 * ### 漏洞修复
 
   漏洞可以从两方面进行修复：以非root权限运行redis、禁用package变量
